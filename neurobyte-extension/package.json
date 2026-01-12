@@ -1,0 +1,262 @@
+{
+  "name": "neurobyte",
+  "displayName": "NeuroByte",
+  "description": "AI-powered coding assistant using local Ollama models - like Claude Code but fully local",
+  "version": "0.1.0",
+  "publisher": "neurobyte",
+  "icon": "media/icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/neurobyte/neurobyte-vscode"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Machine Learning",
+    "Other"
+  ],
+  "keywords": [
+    "ai",
+    "assistant",
+    "ollama",
+    "local",
+    "code",
+    "copilot",
+    "llm"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "neurobyte.openChat",
+        "title": "NeuroByte: Open Chat",
+        "icon": "$(comment-discussion)"
+      },
+      {
+        "command": "neurobyte.askAboutSelection",
+        "title": "NeuroByte: Ask About Selection"
+      },
+      {
+        "command": "neurobyte.explainCode",
+        "title": "NeuroByte: Explain This Code"
+      },
+      {
+        "command": "neurobyte.fixCode",
+        "title": "NeuroByte: Fix This Code"
+      },
+      {
+        "command": "neurobyte.refactorCode",
+        "title": "NeuroByte: Refactor This Code"
+      },
+      {
+        "command": "neurobyte.generateTests",
+        "title": "NeuroByte: Generate Tests"
+      },
+      {
+        "command": "neurobyte.addDocumentation",
+        "title": "NeuroByte: Add Documentation"
+      },
+      {
+        "command": "neurobyte.enterPlanMode",
+        "title": "NeuroByte: Enter Plan Mode"
+      },
+      {
+        "command": "neurobyte.approvePlan",
+        "title": "NeuroByte: Approve Current Plan"
+      },
+      {
+        "command": "neurobyte.selectModel",
+        "title": "NeuroByte: Select Model"
+      },
+      {
+        "command": "neurobyte.pullModel",
+        "title": "NeuroByte: Pull/Download Model"
+      },
+      {
+        "command": "neurobyte.showDeviceInfo",
+        "title": "NeuroByte: Show Device Info"
+      },
+      {
+        "command": "neurobyte.indexProject",
+        "title": "NeuroByte: Index Current Project"
+      },
+      {
+        "command": "neurobyte.setupOllama",
+        "title": "NeuroByte: Setup Ollama"
+      },
+      {
+        "command": "neurobyte.openSettings",
+        "title": "NeuroByte: Open Settings"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "submenu": "neurobyte.submenu",
+          "group": "neurobyte"
+        }
+      ],
+      "neurobyte.submenu": [
+        {
+          "command": "neurobyte.askAboutSelection",
+          "when": "editorHasSelection"
+        },
+        {
+          "command": "neurobyte.explainCode",
+          "when": "editorHasSelection"
+        },
+        {
+          "command": "neurobyte.fixCode",
+          "when": "editorHasSelection"
+        },
+        {
+          "command": "neurobyte.refactorCode",
+          "when": "editorHasSelection"
+        },
+        {
+          "command": "neurobyte.generateTests",
+          "when": "editorHasSelection"
+        },
+        {
+          "command": "neurobyte.addDocumentation",
+          "when": "editorHasSelection"
+        }
+      ]
+    },
+    "submenus": [
+      {
+        "id": "neurobyte.submenu",
+        "label": "NeuroByte"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "neurobyte-sidebar",
+          "title": "NeuroByte",
+          "icon": "media/sidebar-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "neurobyte-sidebar": [
+        {
+          "type": "webview",
+          "id": "neurobyte.chatView",
+          "name": "Chat"
+        },
+        {
+          "id": "neurobyte.planView",
+          "name": "Plan"
+        },
+        {
+          "id": "neurobyte.modelsView",
+          "name": "Models"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "NeuroByte",
+      "properties": {
+        "neurobyte.ollamaUrl": {
+          "type": "string",
+          "default": "http://127.0.0.1:11434",
+          "description": "Ollama server URL"
+        },
+        "neurobyte.defaultModel": {
+          "type": "string",
+          "default": "",
+          "description": "Default model to use (leave empty for auto-detection based on device)"
+        },
+        "neurobyte.autoStartOllama": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically start Ollama if not running"
+        },
+        "neurobyte.autoPullModel": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically pull recommended model if not available"
+        },
+        "neurobyte.streaming": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable streaming responses"
+        },
+        "neurobyte.temperature": {
+          "type": "number",
+          "default": 0.7,
+          "minimum": 0,
+          "maximum": 2,
+          "description": "Temperature for generation (0-2)"
+        },
+        "neurobyte.maxContextLength": {
+          "type": "number",
+          "default": 8192,
+          "description": "Maximum context length for chat"
+        },
+        "neurobyte.planMode.requireApproval": {
+          "type": "boolean",
+          "default": true,
+          "description": "Require user approval before executing plans"
+        },
+        "neurobyte.planMode.autoSave": {
+          "type": "boolean",
+          "default": true,
+          "description": "Auto-save plans to .neurobyte/plan.md"
+        },
+        "neurobyte.excludePatterns": {
+          "type": "array",
+          "default": [
+            "**/node_modules/**",
+            "**/.git/**",
+            "**/target/**",
+            "**/dist/**",
+            "**/build/**"
+          ],
+          "description": "Patterns to exclude from indexing"
+        }
+      }
+    },
+    "keybindings": [
+      {
+        "command": "neurobyte.openChat",
+        "key": "ctrl+shift+n",
+        "mac": "cmd+shift+n"
+      },
+      {
+        "command": "neurobyte.askAboutSelection",
+        "key": "ctrl+shift+a",
+        "mac": "cmd+shift+a",
+        "when": "editorHasSelection"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile",
+    "lint": "eslint src --ext ts",
+    "package": "vsce package",
+    "build:core": "cd ../neurobyte-core && cargo build --release"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/vscode": "^1.85.0",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "@typescript-eslint/parser": "^6.13.0",
+    "@vscode/vsce": "^2.22.0",
+    "eslint": "^8.55.0",
+    "typescript": "^5.3.0"
+  },
+  "dependencies": {
+    "axios": "^1.6.2",
+    "ws": "^8.14.2"
+  }
+}

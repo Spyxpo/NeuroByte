@@ -22,19 +22,19 @@ NeuroByte is a VS Code extension that provides Claude Code-like capabilities usi
 ### macOS / Linux
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/neurobyte/neurobyte/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/spyxpo/neurobyte/stable/scripts/install.sh | bash
 ```
 
 ### Windows (PowerShell)
 
 ```powershell
-iwr -useb https://raw.githubusercontent.com/neurobyte/neurobyte/main/scripts/install.ps1 | iex
+iwr -useb https://raw.githubusercontent.com/spyxpo/neurobyte/stable/scripts/install.ps1 | iex
 ```
 
 ### npm
 
 ```bash
-npm install -g neurobyte
+npm install -g @spyxpo/neurobyte
 ```
 
 ### Homebrew (macOS/Linux)

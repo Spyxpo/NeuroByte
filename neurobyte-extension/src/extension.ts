@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { NeuroByteCoreService } from './services/coreService';
 import { OllamaService } from './services/ollamaService';
 import { ChatViewProvider } from './providers/chatViewProvider';
+import { ChatPanelProvider } from './providers/chatPanelProvider';
 import { PlanViewProvider } from './providers/planViewProvider';
 import { ModelsViewProvider } from './providers/modelsViewProvider';
 import { registerCommands } from './commands';
@@ -66,9 +67,16 @@ export async function activate(context: vscode.ExtensionContext) {
     // Register commands
     registerCommands(context, coreService, ollamaService, chatViewProvider, planViewProvider, modelsViewProvider);
 
+    // Register command to open chat panel in editor area
+    context.subscriptions.push(
+        vscode.commands.registerCommand('neurobyte.openChatPanel', () => {
+            ChatPanelProvider.createOrShow(context, coreService, ollamaService);
+        })
+    );
+
     // Status bar item
     const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
-    statusBarItem.command = 'neurobyte.openChat';
+    statusBarItem.command = 'neurobyte.openChatPanel';
     statusBarItem.text = '$(hubot) NeuroByte';
     statusBarItem.tooltip = 'Open NeuroByte Chat';
     statusBarItem.show();

@@ -34,6 +34,11 @@
     "commands": [
       {
         "command": "neurobyte.openChat",
+        "title": "NeuroByte: Open Chat (Sidebar)",
+        "icon": "$(comment-discussion)"
+      },
+      {
+        "command": "neurobyte.openChatPanel",
         "title": "NeuroByte: Open Chat",
         "icon": "$(comment-discussion)"
       },
@@ -95,6 +100,19 @@
       }
     ],
     "menus": {
+      "editor/title/run": [
+        {
+          "command": "neurobyte.openChatPanel",
+          "group": "navigation@1"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "neurobyte.openChatPanel",
+          "group": "navigation",
+          "when": "resourceLangId"
+        }
+      ],
       "editor/context": [
         {
           "submenu": "neurobyte.submenu",
@@ -225,7 +243,7 @@
     },
     "keybindings": [
       {
-        "command": "neurobyte.openChat",
+        "command": "neurobyte.openChatPanel",
         "key": "ctrl+shift+n",
         "mac": "cmd+shift+n"
       },

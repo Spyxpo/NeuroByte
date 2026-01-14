@@ -57,15 +57,25 @@ async function activate(context) {
     catch (error) {
         vscode.window.showWarningMessage(`NeuroByte Core failed to start: ${error}. Some features may be limited.`);
     }
-    // Check Ollama status and setup if needed
-    const ollamaStatus = await ollamaService.checkStatus();
+    // Check Ollama status and auto-start if needed
+    let ollamaStatus = await ollamaService.checkStatus();
     if (!ollamaStatus.running) {
-        const action = await vscode.window.showInformationMessage('Ollama is not running. Would you like to set it up?', 'Setup Ollama', 'Later');
-        if (action === 'Setup Ollama') {
-            vscode.commands.executeCommand('neurobyte.setupOllama');
+        // Try to auto-start Ollama in the background
+        console.log('Ollama not running, attempting to start...');
+        const started = await ollamaService.startOllama();
+        if (started) {
+            console.log('Ollama started successfully');
+            ollamaStatus = { running: true };
+        }
+        else {
+            // Only prompt user if auto-start failed
+            const action = await vscode.window.showInformationMessage('Ollama is not running and could not be started automatically. Would you like to set it up?', 'Setup Ollama', 'Later');
+            if (action === 'Setup Ollama') {
+                vscode.commands.executeCommand('neurobyte.setupOllama');
+            }
         }
     }
-    else {
+    if (ollamaStatus.running) {
         // Check if we have a model
         const models = await ollamaService.listModels();
         if (models.length === 0) {

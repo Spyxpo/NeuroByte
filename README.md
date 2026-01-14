@@ -1,6 +1,6 @@
 # NeuroByte
 
-**AI-Powered Local Coding Assistant** - Like Claude Code, but runs entirely on your machine using Ollama.
+**AI-Powered Local Coding Assistant** which runs entirely on your machine using Ollama.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 

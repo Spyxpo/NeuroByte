@@ -182,6 +182,50 @@ export class OllamaService {
         const temperature = config.get('temperature', 0.7);
         const maxContext = config.get('maxContextLength', 8192);
 
+        // Check if Ollama is running first
+        const status = await this.checkStatus();
+        if (!status.running) {
+            return {
+                success: false,
+                error: 'Ollama is not running. Please start Ollama first.'
+            };
+        }
+
+        // Verify model exists before attempting chat
+        const models = await this.listModels();
+        const modelExists = models.some(m => m.name === model || m.name.startsWith(model + ':'));
+        if (!modelExists) {
+            // Model not found - prompt user to download it
+            const action = await vscode.window.showInformationMessage(
+                `Model '${model}' is not installed. Would you like to download it now?`,
+                'Download',
+                'Cancel'
+            );
+
+            if (action === 'Download') {
+                const success = await this.pullModel(model);
+                if (!success) {
+                    return {
+                        success: false,
+                        error: `Failed to download model '${model}'. Please try again.`
+                    };
+                }
+                // Model downloaded successfully, continue with the request
+            } else {
+                if (models.length > 0) {
+                    return {
+                        success: false,
+                        error: `Model '${model}' not found. Available models: ${models.map(m => m.name).join(', ')}`
+                    };
+                } else {
+                    return {
+                        success: false,
+                        error: 'No models installed. Please install a model first.'
+                    };
+                }
+            }
+        }
+
         // Build system prompt with context
         const systemPrompt = this.buildSystemPrompt(request.context);
         const messages = [
@@ -206,9 +250,20 @@ export class OllamaService {
                 model: response.data.model
             };
         } catch (error: any) {
+            // Extract detailed error information from Ollama API response
+            let errorMessage = error.message;
+            if (error.response) {
+                const status = error.response.status;
+                const data = error.response.data;
+                if (data?.error) {
+                    errorMessage = `Ollama API error (${status}): ${data.error}`;
+                } else {
+                    errorMessage = `Ollama API error (${status}): ${JSON.stringify(data)}`;
+                }
+            }
             return {
                 success: false,
-                error: error.message
+                error: errorMessage
             };
         }
     }
@@ -218,6 +273,50 @@ export class OllamaService {
         const model = request.model || config.get('defaultModel', 'qwen2.5:7b');
         const temperature = config.get('temperature', 0.7);
         const maxContext = config.get('maxContextLength', 8192);
+
+        // Check if Ollama is running first
+        const status = await this.checkStatus();
+        if (!status.running) {
+            yield 'Error: Ollama is not running. Please start Ollama first (run `ollama serve` in terminal or start the Ollama app).';
+            return;
+        }
+
+        // Verify model exists before attempting chat
+        const models = await this.listModels();
+        const modelExists = models.some(m => m.name === model || m.name.startsWith(model + ':'));
+        if (!modelExists) {
+            // Model not found - prompt user to download it
+            const modelToDownload = models.length === 0 ? model : model;
+            const action = await vscode.window.showInformationMessage(
+                `Model '${modelToDownload}' is not installed. Would you like to download it now?`,
+                'Download',
+                'Cancel'
+            );
+
+            if (action === 'Download') {
+                yield `Downloading model '${modelToDownload}'... This may take a few minutes.\n\n`;
+
+                let lastStatus = '';
+                const success = await this.pullModel(modelToDownload, (progressStatus) => {
+                    lastStatus = progressStatus;
+                });
+
+                if (success) {
+                    yield `\nModel '${modelToDownload}' downloaded successfully! Continuing with your request...\n\n`;
+                    // Continue with the chat after successful download
+                } else {
+                    yield `\nError: Failed to download model '${modelToDownload}'. Please try again or run \`ollama pull ${modelToDownload}\` in terminal.`;
+                    return;
+                }
+            } else {
+                if (models.length > 0) {
+                    yield `Error: Model '${model}' not found. Available models: ${models.map(m => m.name).join(', ')}. Please select a different model from settings.`;
+                } else {
+                    yield 'Error: No models installed. Please install a model to continue.';
+                }
+                return;
+            }
+        }
 
         const systemPrompt = this.buildSystemPrompt(request.context);
         const messages = [
@@ -250,7 +349,22 @@ export class OllamaService {
                 }
             }
         } catch (error: any) {
-            yield `Error: ${error.message}`;
+            // Extract detailed error information from Ollama API response
+            let errorMessage = error.message;
+            if (error.response) {
+                const status = error.response.status;
+                const data = error.response.data;
+                if (typeof data === 'string') {
+                    errorMessage = `Ollama API error (${status}): ${data}`;
+                } else if (data?.error) {
+                    errorMessage = `Ollama API error (${status}): ${data.error}`;
+                } else {
+                    errorMessage = `Ollama API error (${status}): ${JSON.stringify(data)}`;
+                }
+            } else if (error.code === 'ECONNREFUSED') {
+                errorMessage = 'Cannot connect to Ollama. Please make sure Ollama is running (run `ollama serve` in terminal).';
+            }
+            yield `Error: ${errorMessage}`;
         }
     }
 
@@ -348,39 +462,101 @@ Guidelines:
         const platform = os.platform();
 
         try {
-            if (platform === 'darwin' || platform === 'linux') {
-                spawn('ollama', ['serve'], {
+            // First check if ollama binary exists
+            const ollamaPath = await this.findOllamaPath();
+            if (!ollamaPath) {
+                console.log('Ollama binary not found in PATH');
+                return false;
+            }
+
+            console.log(`Found ollama at: ${ollamaPath}`);
+
+            return new Promise((resolve) => {
+                let resolved = false;
+                const resolveOnce = (value: boolean) => {
+                    if (!resolved) {
+                        resolved = true;
+                        resolve(value);
+                    }
+                };
+
+                const spawnOptions: any = {
                     detached: true,
                     stdio: 'ignore'
-                }).unref();
+                };
 
-                // Wait for Ollama to start
-                for (let i = 0; i < 30; i++) {
-                    await new Promise(r => setTimeout(r, 1000));
-                    const status = await this.checkStatus();
-                    if (status.running) {
-                        return true;
-                    }
+                if (platform === 'win32') {
+                    spawnOptions.shell = true;
                 }
-            } else if (platform === 'win32') {
-                spawn('ollama', ['serve'], {
-                    detached: true,
-                    stdio: 'ignore',
-                    shell: true
-                }).unref();
 
-                for (let i = 0; i < 30; i++) {
-                    await new Promise(r => setTimeout(r, 1000));
-                    const status = await this.checkStatus();
-                    if (status.running) {
-                        return true;
+                const child = spawn(ollamaPath, ['serve'], spawnOptions);
+
+                child.on('error', (err) => {
+                    console.error('Failed to start Ollama:', err.message);
+                    resolveOnce(false);
+                });
+
+                // Give the process a moment to potentially fail
+                setTimeout(async () => {
+                    // Poll for Ollama to become available
+                    for (let i = 0; i < 30; i++) {
+                        await new Promise(r => setTimeout(r, 1000));
+                        const status = await this.checkStatus();
+                        if (status.running) {
+                            console.log('Ollama started successfully');
+                            child.unref();
+                            resolveOnce(true);
+                            return;
+                        }
                     }
-                }
-            }
-            return false;
-        } catch {
+                    console.log('Ollama failed to start within 30 seconds');
+                    resolveOnce(false);
+                }, 500);
+            });
+        } catch (error) {
+            console.error('Error starting Ollama:', error);
             return false;
         }
+    }
+
+    private async findOllamaPath(): Promise<string | null> {
+        const platform = os.platform();
+
+        // Common paths where ollama might be installed
+        const commonPaths = platform === 'win32'
+            ? [
+                'ollama',
+                'C:\\Program Files\\Ollama\\ollama.exe',
+                `${process.env.LOCALAPPDATA}\\Ollama\\ollama.exe`,
+                `${process.env.USERPROFILE}\\AppData\\Local\\Programs\\Ollama\\ollama.exe`
+            ]
+            : [
+                'ollama',
+                '/usr/local/bin/ollama',
+                '/usr/bin/ollama',
+                '/opt/homebrew/bin/ollama',
+                `${process.env.HOME}/.local/bin/ollama`
+            ];
+
+        for (const path of commonPaths) {
+            try {
+                const result = await this.checkOllamaExists(path);
+                if (result) {
+                    return path;
+                }
+            } catch {
+                continue;
+            }
+        }
+        return null;
+    }
+
+    private checkOllamaExists(path: string): Promise<boolean> {
+        return new Promise((resolve) => {
+            exec(`"${path}" --version`, (error) => {
+                resolve(!error);
+            });
+        });
     }
 
     private runCommand(command: string): Promise<boolean> {

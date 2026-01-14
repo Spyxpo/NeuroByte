@@ -26,6 +26,17 @@ export async function activate(context: vscode.ExtensionContext) {
         );
     }
 
+    // Register view providers first (before Ollama check so they can be refreshed)
+    const chatViewProvider = new ChatViewProvider(context, coreService, ollamaService);
+    const planViewProvider = new PlanViewProvider(context, coreService);
+    const modelsViewProvider = new ModelsViewProvider(context, ollamaService);
+
+    context.subscriptions.push(
+        vscode.window.registerWebviewViewProvider('neurobyte.chatView', chatViewProvider),
+        vscode.window.registerTreeDataProvider('neurobyte.planView', planViewProvider),
+        vscode.window.registerTreeDataProvider('neurobyte.modelsView', modelsViewProvider)
+    );
+
     // Check Ollama status and auto-start if needed
     let ollamaStatus = await ollamaService.checkStatus();
     if (!ollamaStatus.running) {
@@ -35,6 +46,8 @@ export async function activate(context: vscode.ExtensionContext) {
         if (started) {
             console.log('Ollama started successfully');
             ollamaStatus = { running: true };
+            // Refresh the models view now that Ollama is running
+            modelsViewProvider.refresh();
         } else {
             // Only prompt user if auto-start failed
             const action = await vscode.window.showInformationMessage(
@@ -49,6 +62,9 @@ export async function activate(context: vscode.ExtensionContext) {
     }
 
     if (ollamaStatus.running) {
+        // Refresh models view to ensure it shows latest models
+        await modelsViewProvider.refresh();
+
         // Check if we have a model
         const models = await ollamaService.listModels();
         if (models.length === 0) {
@@ -63,17 +79,6 @@ export async function activate(context: vscode.ExtensionContext) {
             }
         }
     }
-
-    // Register view providers
-    const chatViewProvider = new ChatViewProvider(context, coreService, ollamaService);
-    const planViewProvider = new PlanViewProvider(context, coreService);
-    const modelsViewProvider = new ModelsViewProvider(context, ollamaService);
-
-    context.subscriptions.push(
-        vscode.window.registerWebviewViewProvider('neurobyte.chatView', chatViewProvider),
-        vscode.window.registerTreeDataProvider('neurobyte.planView', planViewProvider),
-        vscode.window.registerTreeDataProvider('neurobyte.modelsView', modelsViewProvider)
-    );
 
     // Register commands
     registerCommands(context, coreService, ollamaService, chatViewProvider, planViewProvider, modelsViewProvider);
